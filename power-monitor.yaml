@@ -1,0 +1,79 @@
+esphome:
+  name: power-monitor
+
+esp8266:
+  board: d1_mini
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: #Your key here
+
+ota:
+  password: #Your password here
+
+wifi:
+  ssid:  #Your wifi name here
+  password:  #Your password here
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Power-Monitor Fallback Hotspot"
+    password: "power_monitor"
+
+captive_portal:
+    
+i2c:
+  sda: D3
+  scl: D4
+  scan: true
+  id: db_busa
+  
+sensor:
+  - platform: ct_clamp
+    sensor: adc_sensor
+    name: "Grid power"
+#    update_interval: 3s
+    filters:
+      - calibrate_linear:
+          - 0 -> 0
+          - 0.09 -> 13.00
+      - lambda: return x * 230.0 / 1000;
+    unit_of_measurement: "kW"
+    id: my_power
+
+  # Example source sensor
+  - platform: adc
+    pin: A0
+    id: adc_sensor
+
+  - platform: total_daily_energy
+    name: "Grid Total Daily Energy"
+    id: daily_power
+    power_id: my_power
+    unit_of_measurement: kWh
+    accuracy_decimals: 4
+
+time:
+  - platform: sntp
+    servers: 192.168.10.210
+    id: my_time
+
+font:
+  - file: 'Arial.ttf'
+    id: font1
+    size: 16
+
+display:
+  - platform: ssd1306_i2c
+    model: "SH1106 128x64"
+    reset_pin: D0
+    address: 0x3C
+    lambda: |-
+        it.printf(0, 0, id(font1), "Now: %.2f kW", id(my_power).state);
+        it.printf(0, 20, id(font1), "Today: %.2f kWh", id(daily_power).state);
+        it.strftime(0, 40, id(font1), "Updated: %H:%M", id(my_time).now());
+#    update_interval: 5s    
